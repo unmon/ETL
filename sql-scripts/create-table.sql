@@ -4,16 +4,18 @@
 -- Create the destination table
 CREATE TABLE dbo.ImportedData (
     ID INT IDENTITY(1,1) PRIMARY KEY,
-    Column1 NVARCHAR(255),
-    Column2 NVARCHAR(255),
-    Column3 INT,
-    Column4 DECIMAL(10,2),
-    Column5 DATETIME2,
+    EmployeeName NVARCHAR(255) NOT NULL,
+    Department NVARCHAR(100) NOT NULL,
+    EmployeeID INT NOT NULL,
+    AnnualSalary DECIMAL(10,2) NOT NULL,
+    HireDate DATETIME2 NOT NULL,
     CreatedDate DATETIME2 DEFAULT GETDATE()
 );
 
 -- Create indexes for better performance (optional)
-CREATE INDEX IX_ImportedData_Column1 ON dbo.ImportedData(Column1);
+CREATE INDEX IX_ImportedData_EmployeeName ON dbo.ImportedData(EmployeeName);
+CREATE INDEX IX_ImportedData_Department ON dbo.ImportedData(Department);
+CREATE INDEX IX_ImportedData_EmployeeID ON dbo.ImportedData(EmployeeID);
 CREATE INDEX IX_ImportedData_CreatedDate ON dbo.ImportedData(CreatedDate);
 
 -- Grant permissions to the Data Factory service principal (if using managed identity)
