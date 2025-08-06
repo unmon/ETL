@@ -1,0 +1,273 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dataFactoryName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Data Factory"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Data Lake Storage account"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure Key Vault containing secrets"
+      }
+    },
+    "sqlServerName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure SQL Server"
+      }
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Azure SQL Database"
+      }
+    },
+    "csvFilePath": {
+      "type": "string",
+      "defaultValue": "data/input.csv",
+      "metadata": {
+        "description": "Path to the CSV file in ADLS"
+      }
+    },
+    "sqlTableName": {
+      "type": "string",
+      "defaultValue": "dbo.ImportedData",
+      "metadata": {
+        "description": "Name of the destination SQL table"
+      }
+    }
+  },
+  "variables": {
+    "keyVaultLinkedServiceName": "KeyVault_LinkedService",
+    "adlsLinkedServiceName": "ADLS_LinkedService",
+    "sqlLinkedServiceName": "SQL_LinkedService",
+    "csvDatasetName": "CSV_Dataset",
+    "sqlDatasetName": "SQL_Dataset",
+    "pipelineName": "CSV_to_SQL_Pipeline"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DataFactory/factories",
+      "apiVersion": "2018-06-01",
+      "name": "[parameters('dataFactoryName')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('keyVaultLinkedServiceName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+      ],
+      "properties": {
+        "type": "AzureKeyVault",
+        "typeProperties": {
+          "baseUrl": "[concat('https://', parameters('keyVaultName'), '.vault.azure.net/')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('adlsLinkedServiceName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('dataFactoryName'), variables('keyVaultLinkedServiceName'))]"
+      ],
+      "properties": {
+        "type": "AzureBlobFS",
+        "typeProperties": {
+          "url": "[concat('https://', parameters('storageAccountName'), '.dfs.core.windows.net')]",
+          "accountKey": {
+            "type": "AzureKeyVaultSecret",
+            "store": {
+              "referenceName": "[variables('keyVaultLinkedServiceName')]",
+              "type": "LinkedServiceReference"
+            },
+            "secretName": "adls-storage-key"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('sqlLinkedServiceName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('dataFactoryName'), variables('keyVaultLinkedServiceName'))]"
+      ],
+      "properties": {
+        "type": "AzureSqlDatabase",
+        "typeProperties": {
+          "connectionString": {
+            "type": "AzureKeyVaultSecret",
+            "store": {
+              "referenceName": "[variables('keyVaultLinkedServiceName')]",
+              "type": "LinkedServiceReference"
+            },
+            "secretName": "sql-connection-string"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('csvDatasetName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('dataFactoryName'), variables('adlsLinkedServiceName'))]"
+      ],
+      "properties": {
+        "type": "DelimitedText",
+        "linkedServiceName": {
+          "referenceName": "[variables('adlsLinkedServiceName')]",
+          "type": "LinkedServiceReference"
+        },
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileName": "[last(split(parameters('csvFilePath'), '/'))]",
+            "folderPath": "[if(contains(parameters('csvFilePath'), '/'), substring(parameters('csvFilePath'), 0, lastIndexOf(parameters('csvFilePath'), '/')), '')]",
+            "fileSystem": "data"
+          },
+          "columnDelimiter": ",",
+          "escapeChar": "\\",
+          "firstRowAsHeader": true,
+          "quoteChar": "\""
+        },
+        "schema": []
+      }
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('sqlDatasetName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/linkedServices', parameters('dataFactoryName'), variables('sqlLinkedServiceName'))]"
+      ],
+      "properties": {
+        "type": "AzureSqlTable",
+        "linkedServiceName": {
+          "referenceName": "[variables('sqlLinkedServiceName')]",
+          "type": "LinkedServiceReference"
+        },
+        "typeProperties": {
+          "schema": "[split(parameters('sqlTableName'), '.')[0]]",
+          "table": "[split(parameters('sqlTableName'), '.')[1]]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/pipelines",
+      "apiVersion": "2018-06-01",
+      "name": "[concat(parameters('dataFactoryName'), '/', variables('pipelineName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), variables('csvDatasetName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), variables('sqlDatasetName'))]"
+      ],
+      "properties": {
+        "activities": [
+          {
+            "name": "CopyCSVToSQL",
+            "type": "Copy",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.12:00:00",
+              "retry": 3,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "userProperties": [],
+            "typeProperties": {
+              "source": {
+                "type": "DelimitedTextSource",
+                "storeSettings": {
+                  "type": "AzureBlobFSReadSettings",
+                  "recursive": false,
+                  "enablePartitionDiscovery": false
+                },
+                "formatSettings": {
+                  "type": "DelimitedTextReadSettings"
+                }
+              },
+              "sink": {
+                "type": "AzureSqlSink",
+                "preCopyScript": "[concat('TRUNCATE TABLE ', parameters('sqlTableName'))]",
+                "writeBehavior": "insert",
+                "sqlWriterUseTableLock": false,
+                "disableMetricsCollection": false
+              },
+              "enableStaging": false,
+              "translator": {
+                "type": "TabularTranslator",
+                "typeConversion": true,
+                "typeConversionSettings": {
+                  "allowDataTruncation": true,
+                  "treatBooleanAsNumber": false
+                }
+              }
+            },
+            "inputs": [
+              {
+                "referenceName": "[variables('csvDatasetName')]",
+                "type": "DatasetReference"
+              }
+            ],
+            "outputs": [
+              {
+                "referenceName": "[variables('sqlDatasetName')]",
+                "type": "DatasetReference"
+              }
+            ]
+          }
+        ],
+        "annotations": [],
+        "lastPublishTime": "[utcNow()]"
+      }
+    }
+  ],
+  "outputs": {
+    "dataFactoryName": {
+      "type": "string",
+      "value": "[parameters('dataFactoryName')]"
+    },
+    "dataFactoryResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+    },
+    "dataFactoryIdentityPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), '2018-06-01', 'Full').identity.principalId]"
+    },
+    "pipelineName": {
+      "type": "string",
+      "value": "[variables('pipelineName')]"
+    }
+  }
+}
