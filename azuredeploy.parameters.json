@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dataFactoryName": {
+      "value": "adf-csv-to-sql-demo"
+    },
+    "location": {
+      "value": "East US"
+    },
+    "storageAccountName": {
+      "value": "youradlsstorageaccount"
+    },
+    "storageAccountKey": {
+      "value": "YOUR_STORAGE_ACCOUNT_KEY_HERE"
+    },
+    "sqlServerName": {
+      "value": "your-sql-server"
+    },
+    "sqlDatabaseName": {
+      "value": "your-database"
+    },
+    "sqlUsername": {
+      "value": "sqladmin"
+    },
+    "sqlPassword": {
+      "value": "YOUR_SQL_PASSWORD_HERE"
+    },
+    "csvFilePath": {
+      "value": "input/sample-data.csv"
+    },
+    "sqlTableName": {
+      "value": "dbo.ImportedData"
+    }
+  }
+}
