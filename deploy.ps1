@@ -56,12 +56,7 @@ if (-not $rg) {
 Write-Host "Deploying Azure Data Factory..." -ForegroundColor Green
 $deploymentName = "adf-deployment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
-$deployment = az deployment group create `
-    --resource-group $ResourceGroupName `
-    --template-file $TemplateFile `
-    --parameters @$ParametersFile `
-    --name $deploymentName `
-    --verbose 2>&1
+$deployment = az deployment group create --resource-group $ResourceGroupName --template-file $TemplateFile --parameters @$ParametersFile --name $deploymentName --verbose 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Deployment completed successfully!" -ForegroundColor Green
