@@ -6,28 +6,28 @@
       "value": "adf-csv-to-sql-demo"
     },
     "location": {
-      "value": "East US"
+      "value": "Central India"
     },
     "storageAccountName": {
-      "value": "youradlsstorageaccount"
+      "value": "azdatastoreci"
     },
     "storageAccountKey": {
-      "value": "YOUR_STORAGE_ACCOUNT_KEY_HERE"
+      "value": "#Penc!l12345$"
     },
     "sqlServerName": {
-      "value": "your-sql-server"
+      "value": "az-sql-server"
     },
     "sqlDatabaseName": {
-      "value": "your-database"
+      "value": "app_db"
     },
     "sqlUsername": {
       "value": "sqladmin"
     },
     "sqlPassword": {
-      "value": "YOUR_SQL_PASSWORD_HERE"
+      "value": "P@33w0rd"
     },
     "csvFilePath": {
-      "value": "input/sample-data.csv"
+      "value": "raw/sample-data.csv"
     },
     "sqlTableName": {
       "value": "dbo.ImportedData"
